@@ -13,6 +13,7 @@ import SVProgressHUD
 class TableViewController: UITableViewController {
 
     var arrayNews = [NewsData]()
+    var arrayTopNews = [TopNews]()
     var isLoading = false
     
     override func viewDidLoad() {
@@ -23,7 +24,8 @@ class TableViewController: UITableViewController {
         
         tableView.addSubview(refreshControl!)
         
-        loadData()
+        loadTopNews()
+        //loadData()
         // Uncomment the following line to preserve selection between presentations
         // self.clearsSelectionOnViewWillAppear = false
 
@@ -40,26 +42,65 @@ class TableViewController: UITableViewController {
         }
     }
     
-    func loadData() {
-        //SVProgressHUD.show()
-        
-        
-        AF.request("https://hacker-news.firebaseio.com/v0/item/38002752.json?print=pretty", method: .get).responseJSON { response in
-            
-            //SVProgressHUD.dismiss()
-            
-            self.isLoading = false
-            self.refreshControl?.endRefreshing()
+    func loadTopNews() {
+        AF.request("https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty", method: .get).responseJSON { response in
             
             if response.response?.statusCode == 200 {
-                let json = try? JSON(data: response.data!)
+                let json = JSON(response.value!)
                 print(json)
-                let newsItem = NewsData(json: json ?? "")
-                self.arrayNews.append(newsItem)
-                self.tableView.reloadData()
+                if let resultArray = json.array {
+                    for item in resultArray {
+                        let topNewsItem = TopNews(json: item)
+                        self.arrayTopNews.append(topNewsItem)
+                    }
+                    self.loadData()
+                } else {
+                    self.showNoTopNewsAvailableAlert()
                 }
+            } else {
+                self.showTopNewsLoadFailureAlert()
             }
+            
         }
+    }
+
+    func loadData() {
+        
+        for i in arrayTopNews[0...4] {
+            SVProgressHUD.show()
+            var newsID = i.newsID
+            
+            AF.request("https://hacker-news.firebaseio.com/v0/item/\(newsID).json?print=pretty", method: .get).responseJSON { response in
+                
+                SVProgressHUD.dismiss()
+                
+                self.isLoading = false
+                self.refreshControl?.endRefreshing()
+                
+                if response.response?.statusCode == 200 {
+                    let json = try? JSON(data: response.data!)
+                    print(json!)
+                    let newsItem = NewsData(json: json ?? "")
+                    self.arrayNews.append(newsItem)
+                    self.tableView.reloadData()
+                    }
+                }
+        }
+        }
+    
+    func showNoTopNewsAvailableAlert() {
+        
+        let alert = UIAlertController(title: "No Top Stories", message: "There are no top stories available.", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        self.present(alert, animated: true, completion: nil)
+    }
+
+    func showTopNewsLoadFailureAlert() {
+        
+        let alert = UIAlertController(title: "Top News Load Failed", message: "Failed to load top news. Please try again later.", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        self.present(alert, animated: true, completion: nil)
+    }
     
     // MARK: - Table view data source
 
@@ -84,7 +125,14 @@ class TableViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 170
+        return 149
+    }
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let newsVC = storyboard?.instantiateViewController(identifier: "NewsViewController") as! ViewController
+        newsVC.newsView = arrayNews[indexPath.row]
+        newsVC.newsView.url = arrayNews[indexPath.row].url
+        navigationController?.show(newsVC, sender: self)
     }
 
     /*
