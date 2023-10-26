@@ -38,7 +38,7 @@ class TableViewController: UITableViewController {
             isLoading = true
             arrayNews.removeAll()
             tableView.reloadData()
-            loadData()
+            loadTopNews()
         }
     }
     
@@ -66,7 +66,7 @@ class TableViewController: UITableViewController {
 
     func loadData() {
         
-        for i in arrayTopNews[0...4] {
+        for i in arrayTopNews[0...9] {
             SVProgressHUD.show()
             var newsID = i.newsID
             
